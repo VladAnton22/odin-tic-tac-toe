@@ -1,4 +1,4 @@
-function GameBoard() {
+const GameBoard  = (function() {
     let board = ["", "", "", "", "", "", "", "", ""];
     const displayBoard = function() {
         console.log(
@@ -20,47 +20,52 @@ function GameBoard() {
         }
     }
 
-    return {board, displayBoard, updateBoard, reset};
-}
+    const getBoard = function () {
+        return [...board];
+    };
+
+    return {getBoard, displayBoard, updateBoard, reset};
+})()
 
 function Player(name, symbol) {
     return {name, symbol};
 }
 
-function GameController() {
+const GameController = (function() {
     let currentPlayer = null;
     let players = [];
     let gameOver = false;
-    let game_board = GameBoard();
 
     const startGame = function() {
-        players = [Player("Alice", "X"), Player("Bob", "O")];
+        players = [Player("Player 1", "X"), Player("Player 2", "O")];
         currentPlayer = players[0];
         gameOver = false;
-        game_board.reset();
-        game_board.displayBoard();
+        GameBoard.reset();
+        GameBoard.displayBoard();
     }
 
     const playTurn = function(index) {
         if (gameOver) return;
         
-        const success = game_board.updateBoard(index, currentPlayer.symbol);
+        const success = GameBoard.updateBoard(index, currentPlayer.symbol);
         if (!success) {
             console.log("Invalid move! Try another spot.");
             return;
         }
 
-        game_board.displayBoard();
+        GameBoard.displayBoard();
 
         if (checkWin(currentPlayer.symbol)) {
             console.log(`${currentPlayer.name} wins!`);
             gameOver = true;
-        } else if (!game_board.board.includes("")) {
+        } else if (!GameBoard.getBoard().includes("")) {
             console.log("It's a draw!");
             gameOver = true;
         } else {
             switchPlayer();
         }
+
+        return true;
     }
 
     const switchPlayer = function() {
@@ -68,7 +73,7 @@ function GameController() {
     }
 
     const checkWin = function(symbol) {
-        const b = game_board.board;
+        const b = GameBoard.getBoard();
         const winPatterns = [
             [0,1,2], [3,4,5], [6,7,8], // rows
             [0,3,6], [1,4,7], [2,5,8], // columns
@@ -79,8 +84,66 @@ function GameController() {
         );
     }
 
-    return {startGame, playTurn};
+    const isGameOver = function() {
+        return gameOver;
+    }
+
+    const getCurrentPlayerName = function() {
+        return currentPlayer.name;
+    }
+
+    const getStatusMessage = function() {
+        if (!gameOver) return "";
+        const board = GameBoard.getBoard();
+        if (board.includes("")) return `${currentPlayer.name} wins!`;
+        return "It's a draw!";
+    }
+
+    return {startGame, playTurn, isGameOver, getCurrentPlayerName, getStatusMessage};
+})()
+
+const gameBoardElement = document.getElementById("gameBoard");
+const statusText = document.getElementById("statusText");
+const restartBtn = document.getElementById("restartBtn");
+
+function renderBoard() {
+    gameBoardElement.innerHTML = "";
+    for (let i = 0; i < 9; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.index = i;
+        cell.addEventListener("click", () => handleClick(i));
+        gameBoardElement.appendChild(cell);
+    }
 }
 
-let game_controller = GameController();
-game_controller.startGame();
+GameController.startGame();
+renderBoard();
+updateUI();
+
+function handleClick(index) {
+    if (GameController.playTurn(index)) {
+        updateUI();
+    }
+}
+
+function updateUI() {
+    const boardState = GameBoard.getBoard();
+    const cells = document.querySelectorAll(".cell");
+
+    boardState.forEach((value, i) => {
+        cells[i].textContent = value;
+    });
+
+    if (GameController.isGameOver()) {
+        statusText.textContent = GameController.getStatusMessage();
+    } else {
+        statusText.textContent = GameController.getCurrentPlayerName() + "'s turn"
+    }
+}
+
+restartBtn.addEventListener("click", () => {
+    GameController.startGame();
+    renderBoard();
+    updateUI();
+});
